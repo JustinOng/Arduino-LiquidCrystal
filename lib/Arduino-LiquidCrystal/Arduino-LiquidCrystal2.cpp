@@ -22,6 +22,19 @@ void LiquidCrystal::begin(uint8_t _cols, uint8_t _rows) {
 
   if (rows > 2) rows = 2;
 
+  screen_buffer = (uint8_t*) malloc(cols*rows);
+  pScreen_buffer = (uint8_t*) malloc(cols*rows);
+
+  if (screen_buffer == NULL) {
+    screen_buffer_len = 0;
+  }
+  else {
+    screen_buffer_len = cols * rows;
+  }
+
+  memset(screen_buffer, 0x32, screen_buffer_len);
+  memset(pScreen_buffer, 0x32, screen_buffer_len);
+
   digitalWrite(en, LOW);
   delay(50);
   write_nibble(0, 0x03);
@@ -38,15 +51,32 @@ void LiquidCrystal::begin(uint8_t _cols, uint8_t _rows) {
   _display_ctrl = DISPLAY_CTRL | DISPLAY_ON | CURSOR_OFF | BLINK_CURSOR_OFF;
   write_byte(0, _display_ctrl);
 
-  clear();
+  write_byte(0, CLEAR_DISPLAY);
 
   write_byte(0, ENTRY_MODE | INCREMENT);
 
-  clear();
+  write_byte(0, CLEAR_DISPLAY);
+}
+
+void LiquidCrystal::throttleUpdates(uint16_t ms) {
+  throttle_time = ms;
+}
+
+void LiquidCrystal::update() {
+  static uint32_t previous_update_time = 0;
+
+  if ((millis() - previous_update_time) > throttle_time) {
+    write_buffer_to_lcd();
+    previous_update_time = millis();
+  }
 }
 
 void LiquidCrystal::clear() {
-  write_byte(0, CLEAR_DISPLAY);
+  //write_byte(0, CLEAR_DISPLAY);
+
+  memset(screen_buffer, 0x32, screen_buffer_len);
+  cursor_x = 0;
+  cursor_y = 0;
 }
 
 void LiquidCrystal::home() {
@@ -54,15 +84,31 @@ void LiquidCrystal::home() {
 }
 
 void LiquidCrystal::setCursor(uint8_t _col, uint8_t _row) {
+  cursor_x = _col;
+  cursor_y = _row;
+}
+
+void LiquidCrystal::set_actual_cursor(uint8_t _col, uint8_t _row) {
   write_byte(0, SET_DDRAM_ADDR | (_col + _row * 0x40));
 }
 
 size_t LiquidCrystal::write(uint8_t data) {
-  write_byte(1, data);
+  //write_byte(1, data);
+
+  screen_buffer[cursor_x + (cursor_y*cols)] = data;
+
+  /*Serial.print("Wrote ");
+  Serial.print((char)data);
+  Serial.print(" at ");
+  Serial.print(cursor_x);
+  Serial.print(", ");
+  Serial.println(cursor_y);*/
+
+  cursor_x ++;
   return 1;
 }
 
-void LiquidCrystal::blink_cursor_pos(uint8_t enabled) {
+void LiquidCrystal::blinkCursorPos(uint8_t enabled) {
   _display_ctrl &= ~0x01;
   _display_ctrl |= enabled & 0x01;
   write_byte(0, _display_ctrl);
@@ -103,4 +149,56 @@ void LiquidCrystal::write_nibble(uint8_t _rs, uint8_t data) {
 
   digitalWrite(en, LOW);
   delay(1);
+}
+
+void LiquidCrystal::write_buffer_to_lcd() {
+  // compares screen_buffer to pScreen_buffer and only writes the char to lcd if it has changed
+  uint8_t previous_char_changed = 0;
+
+  uint8_t cur_pos = 0;
+
+  for(uint8_t y = 0; y < rows; y++) {
+    for(uint8_t x = 0; x < cols; x++) {
+      cur_pos = x+y*cols;
+
+      /*Serial.print(x);
+      Serial.print(", ");
+      Serial.print(y);
+      Serial.print("(");
+      Serial.print(cur_pos);
+      Serial.print(") is ");
+      Serial.println((char) screen_buffer[cur_pos]);*/
+
+      if (screen_buffer[cur_pos] != pScreen_buffer[cur_pos]) {
+        // if previous char did not change, meaning cursor is not at this pos
+        // need to manually set
+
+        Serial.print("Char at ");
+        Serial.print(x);
+        Serial.print(", ");
+        Serial.print(y);
+        Serial.print(" changed from ");
+        Serial.print((char) pScreen_buffer[cur_pos]);
+        Serial.print(" to ");
+        Serial.println((char) screen_buffer[cur_pos]);
+
+        if (!previous_char_changed) {
+          set_actual_cursor(x, y);
+        }
+
+        write_byte(1, screen_buffer[cur_pos]);
+
+        previous_char_changed = true;
+      }
+      else {
+        previous_char_changed = false;
+      }
+    }
+
+    // set to false so upon shifting to next row actual cursor will be moved
+    previous_char_changed = false;
+  }
+
+  memcpy(pScreen_buffer, screen_buffer, screen_buffer_len);
+  set_actual_cursor(cursor_x, cursor_y);
 }

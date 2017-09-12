@@ -43,8 +43,12 @@ class LiquidCrystal: public Print {
     void home();
     void setCursor(uint8_t _col, uint8_t _row);
     void cursor(uint8_t enabled);
-    void blink_cursor_pos(uint8_t enabled);
+    void blinkCursorPos(uint8_t enabled);
     void display(uint8_t enabled);
+
+    void throttleUpdates(uint16_t ms);
+
+    void update();
   private:
     uint8_t rs = 255,
     en = 255;
@@ -55,8 +59,21 @@ class LiquidCrystal: public Print {
 
     uint8_t cols = 0, rows = 0;
 
+    uint8_t *screen_buffer;
+    uint8_t *pScreen_buffer;
+
+    uint8_t screen_buffer_len = 0;
+
+    uint8_t cursor_x = 0, cursor_y = 0;
+
+    uint16_t throttle_time = 0;
+
+    void set_actual_cursor(uint8_t _col, uint8_t _row);
+
     void write_byte(uint8_t _rs, uint8_t data);
     void write_nibble(uint8_t _rs, uint8_t data);
+
+    void write_buffer_to_lcd();
 
     virtual size_t write(uint8_t data);
 };
