@@ -56,6 +56,9 @@ class LiquidCrystal: public Print {
     void clearBlinkChars();
     void setBlinkInterval(uint16_t ms);
 
+    uint8_t getCursorX();
+    uint8_t getCursorY();
+
     void throttleUpdates(uint16_t ms);
 
     void update();

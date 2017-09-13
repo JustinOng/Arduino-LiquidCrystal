@@ -18,6 +18,14 @@ LiquidCrystal::LiquidCrystal() {
 
 }
 
+uint8_t LiquidCrystal::getCursorX() {
+  return cursor_x;
+}
+
+uint8_t LiquidCrystal::getCursorY() {
+  return cursor_y;
+}
+
 void LiquidCrystal::setBlinkInterval(uint16_t ms) {
   blink_interval = ms;
 }
@@ -44,8 +52,6 @@ void LiquidCrystal::blinkChars(uint8_t x0, uint8_t x1, uint8_t y) {
   for(uint8_t i = x0; i <= x1; i++) {
     blink_mask |= ((uint32_t) 1<<(i+y*cols));
   }
-
-  Serial.println(blink_mask, BIN);
 }
 
 void LiquidCrystal::clearBlinkChars() {
