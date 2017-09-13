@@ -209,6 +209,7 @@ void LiquidCrystal::write_buffer_to_lcd() {
   // compares screen_buffer to pScreen_buffer and only writes the char to lcd if it has changed
   static uint32_t blink_last_change = 0;
   static uint8_t blink_last_state = 0;
+  static uint32_t pBlink_mask = 0;
   uint8_t previous_char_changed = 0;
 
   uint8_t cur_pos = 0;
@@ -227,7 +228,9 @@ void LiquidCrystal::write_buffer_to_lcd() {
 
       if (
         (screen_buffer[cur_pos] != pScreen_buffer[cur_pos]) ||
-        (blink_update && (blink_mask & ((uint32_t) 1<<cur_pos)))
+        (blink_update && (blink_mask & ((uint32_t) 1<<cur_pos))) ||
+        // if this char's blink mask state has been updated then update the actual char
+        ((blink_mask ^ pBlink_mask) & ((uint32_t) 1<<cur_pos))
       ) {
         // if previous char did not change, meaning cursor is not at this pos
         // need to manually set
@@ -258,4 +261,5 @@ void LiquidCrystal::write_buffer_to_lcd() {
 
   memcpy(pScreen_buffer, screen_buffer, screen_buffer_len);
   set_actual_cursor(cursor_x, cursor_y);
+  pBlink_mask = blink_mask;
 }
