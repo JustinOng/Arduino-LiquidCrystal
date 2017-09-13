@@ -1,3 +1,6 @@
+#ifndef LCD_H
+#define LCD_H
+
 #define CLEAR_DISPLAY  0b00000001
 #define RETURN_HOME    0b00000010
 #define ENTRY_MODE     0b00000100
@@ -33,11 +36,13 @@
 #define MODE_5X10_FONT 0x04
 #define MODE_5X8_FONT 0x00
 
+#include <Wire.h>
 #include <Arduino.h>
 
 class LiquidCrystal: public Print {
   public:
     LiquidCrystal(uint8_t _rs, uint8_t _en, uint8_t _d4, uint8_t _d5, uint8_t _d6, uint8_t _d7);
+    LiquidCrystal(uint8_t _rs, uint8_t _rw, uint8_t _en, uint8_t _d4, uint8_t _d5, uint8_t _d6, uint8_t _d7);
     void begin(uint8_t _cols, uint8_t _rows);
     void clear();
     void home();
@@ -49,8 +54,10 @@ class LiquidCrystal: public Print {
     void throttleUpdates(uint16_t ms);
 
     void update();
-  private:
+  protected:
+    LiquidCrystal();
     uint8_t rs = 255,
+    rw = 255,
     en = 255;
 
     uint8_t data_pins[8] = {255};
@@ -70,10 +77,13 @@ class LiquidCrystal: public Print {
 
     void set_actual_cursor(uint8_t _col, uint8_t _row);
 
-    void write_byte(uint8_t _rs, uint8_t data);
-    void write_nibble(uint8_t _rs, uint8_t data);
+    virtual void initialise_hardware();
+    virtual void write_byte(uint8_t _rs, uint8_t data);
+    virtual void write_nibble(uint8_t _rs, uint8_t data);
 
     void write_buffer_to_lcd();
 
     virtual size_t write(uint8_t data);
 };
+
+#endif

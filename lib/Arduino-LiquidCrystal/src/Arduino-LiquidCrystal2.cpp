@@ -1,4 +1,4 @@
-#include "Arduino-LiquidCrystal2.h"
+#include <Arduino-LiquidCrystal2.h>
 
 LiquidCrystal::LiquidCrystal(uint8_t _rs, uint8_t _en, uint8_t _d4, uint8_t _d5, uint8_t _d6, uint8_t _d7) {
   rs = _rs;
@@ -7,16 +7,37 @@ LiquidCrystal::LiquidCrystal(uint8_t _rs, uint8_t _en, uint8_t _d4, uint8_t _d5,
   data_pins[6] = _d6;
   data_pins[5] = _d5;
   data_pins[4] = _d4;
+}
 
-  pinMode(_rs, OUTPUT);
-  pinMode(_en, OUTPUT);
-  pinMode(_d4, OUTPUT);
-  pinMode(_d5, OUTPUT);
-  pinMode(_d6, OUTPUT);
-  pinMode(_d7, OUTPUT);
+LiquidCrystal::LiquidCrystal(uint8_t _rs, uint8_t _rw, uint8_t _en, uint8_t _d4, uint8_t _d5, uint8_t _d6, uint8_t _d7) {
+  rw = _rw;
+  LiquidCrystal(_rs, _en, _d4, _d5, _d6, _d7);
+}
+
+LiquidCrystal::LiquidCrystal() {
+  
+}
+
+void LiquidCrystal::initialise_hardware() {
+  pinMode(rs, OUTPUT);
+
+  if (rw != 255) {
+    pinMode(rw, OUTPUT);
+    digitalWrite(rw, LOW);
+  }
+
+  pinMode(en, OUTPUT);
+  pinMode(data_pins[4], OUTPUT);
+  pinMode(data_pins[5], OUTPUT);
+  pinMode(data_pins[6], OUTPUT);
+  pinMode(data_pins[7], OUTPUT);
+
+  digitalWrite(en, LOW);
 }
 
 void LiquidCrystal::begin(uint8_t _cols, uint8_t _rows) {
+  initialise_hardware();
+
   cols = _cols;
   rows = _rows;
 
@@ -35,7 +56,6 @@ void LiquidCrystal::begin(uint8_t _cols, uint8_t _rows) {
   memset(screen_buffer, 0x32, screen_buffer_len);
   memset(pScreen_buffer, 0x32, screen_buffer_len);
 
-  digitalWrite(en, LOW);
   delay(50);
   write_nibble(0, 0x03);
   delay(5);
@@ -173,14 +193,14 @@ void LiquidCrystal::write_buffer_to_lcd() {
         // if previous char did not change, meaning cursor is not at this pos
         // need to manually set
 
-        Serial.print("Char at ");
+        /*Serial.print("Char at ");
         Serial.print(x);
         Serial.print(", ");
         Serial.print(y);
         Serial.print(" changed from ");
         Serial.print((char) pScreen_buffer[cur_pos]);
         Serial.print(" to ");
-        Serial.println((char) screen_buffer[cur_pos]);
+        Serial.println((char) screen_buffer[cur_pos]);*/
 
         if (!previous_char_changed) {
           set_actual_cursor(x, y);
