@@ -51,6 +51,11 @@ class LiquidCrystal: public Print {
     void blinkCursorPos(uint8_t enabled);
     void display(uint8_t enabled);
 
+    void blinkChar(uint8_t x, uint8_t y);
+    void blinkChars(uint8_t x0, uint8_t x1, uint8_t y);
+    void clearBlinkChars();
+    void setBlinkInterval(uint16_t ms);
+
     void throttleUpdates(uint16_t ms);
 
     void update();
@@ -69,11 +74,14 @@ class LiquidCrystal: public Print {
     uint8_t *screen_buffer;
     uint8_t *pScreen_buffer;
 
+    uint32_t blink_mask = 0;
+
     uint8_t screen_buffer_len = 0;
 
     uint8_t cursor_x = 0, cursor_y = 0;
 
     uint16_t throttle_time = 0;
+    uint16_t blink_interval = 500;
 
     void set_actual_cursor(uint8_t _col, uint8_t _row);
 

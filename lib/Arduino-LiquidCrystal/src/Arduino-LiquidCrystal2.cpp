@@ -15,7 +15,41 @@ LiquidCrystal::LiquidCrystal(uint8_t _rs, uint8_t _rw, uint8_t _en, uint8_t _d4,
 }
 
 LiquidCrystal::LiquidCrystal() {
-  
+
+}
+
+void LiquidCrystal::setBlinkInterval(uint16_t ms) {
+  blink_interval = ms;
+}
+
+void LiquidCrystal::blinkChar(uint8_t x, uint8_t y) {
+  if (x > cols) x = cols;
+  if (y > rows) y = rows;
+
+  blink_mask |= ((uint32_t) 1<<(x+y*cols));
+}
+
+void LiquidCrystal::blinkChars(uint8_t x0, uint8_t x1, uint8_t y) {
+  if (x0 > cols) x0 = cols;
+  if (x1 > cols) x1 = cols;
+
+  if (x0 > x1) {
+    uint8_t tmp = x1;
+    x1 = x0;
+    x0 = tmp;
+  }
+
+  if (y > rows) y = rows;
+
+  for(uint8_t i = x0; i <= x1; i++) {
+    blink_mask |= ((uint32_t) 1<<(i+y*cols));
+  }
+
+  Serial.println(blink_mask, BIN);
+}
+
+void LiquidCrystal::clearBlinkChars() {
+  blink_mask = 0;
 }
 
 void LiquidCrystal::initialise_hardware() {
@@ -53,8 +87,8 @@ void LiquidCrystal::begin(uint8_t _cols, uint8_t _rows) {
     screen_buffer_len = cols * rows;
   }
 
-  memset(screen_buffer, 0x32, screen_buffer_len);
-  memset(pScreen_buffer, 0x32, screen_buffer_len);
+  memset(screen_buffer, 0x20, screen_buffer_len);
+  memset(pScreen_buffer, 0x20, screen_buffer_len);
 
   delay(50);
   write_nibble(0, 0x03);
@@ -94,7 +128,7 @@ void LiquidCrystal::update() {
 void LiquidCrystal::clear() {
   //write_byte(0, CLEAR_DISPLAY);
 
-  memset(screen_buffer, 0x32, screen_buffer_len);
+  memset(screen_buffer, 0x20, screen_buffer_len);
   cursor_x = 0;
   cursor_y = 0;
 }
@@ -173,40 +207,43 @@ void LiquidCrystal::write_nibble(uint8_t _rs, uint8_t data) {
 
 void LiquidCrystal::write_buffer_to_lcd() {
   // compares screen_buffer to pScreen_buffer and only writes the char to lcd if it has changed
+  static uint32_t blink_last_change = 0;
+  static uint8_t blink_last_state = 0;
   uint8_t previous_char_changed = 0;
 
   uint8_t cur_pos = 0;
+
+  uint8_t blink_update = 0;
+
+  if ((millis() - blink_last_change) > blink_interval) {
+    blink_update = 1;
+    blink_last_change = millis();
+    blink_last_state = !blink_last_state;
+  }
 
   for(uint8_t y = 0; y < rows; y++) {
     for(uint8_t x = 0; x < cols; x++) {
       cur_pos = x+y*cols;
 
-      /*Serial.print(x);
-      Serial.print(", ");
-      Serial.print(y);
-      Serial.print("(");
-      Serial.print(cur_pos);
-      Serial.print(") is ");
-      Serial.println((char) screen_buffer[cur_pos]);*/
-
-      if (screen_buffer[cur_pos] != pScreen_buffer[cur_pos]) {
+      if (
+        (screen_buffer[cur_pos] != pScreen_buffer[cur_pos]) ||
+        (blink_update && (blink_mask & ((uint32_t) 1<<cur_pos)))
+      ) {
         // if previous char did not change, meaning cursor is not at this pos
         // need to manually set
-
-        /*Serial.print("Char at ");
-        Serial.print(x);
-        Serial.print(", ");
-        Serial.print(y);
-        Serial.print(" changed from ");
-        Serial.print((char) pScreen_buffer[cur_pos]);
-        Serial.print(" to ");
-        Serial.println((char) screen_buffer[cur_pos]);*/
 
         if (!previous_char_changed) {
           set_actual_cursor(x, y);
         }
 
-        write_byte(1, screen_buffer[cur_pos]);
+        if (blink_update && (blink_mask & ((uint32_t) 1<<cur_pos)) && blink_last_state) {
+          // if should blink this char and last state showed the actual char,
+          // then show a blank this time
+          write_byte(1, 0x20);
+        }
+        else {
+          write_byte(1, screen_buffer[cur_pos]);
+        }
 
         previous_char_changed = true;
       }
